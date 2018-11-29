@@ -2,7 +2,7 @@
 
 #include "wall_follow.h"
 
-WallFollow::WallFollow (std::string direction, double hold_distance, double sensor_range, double abs_stop, 
+WallFollow::WallFollow (std::string direction, double hold_distance, double sensor_range, double width, 
 						double v_max, double rot_v_max, sensor_msgs::LaserScan* pscans, ros::Publisher* publisher){
 	del_theta = 0.1;
 	aligned = false;
@@ -14,6 +14,10 @@ WallFollow::WallFollow (std::string direction, double hold_distance, double sens
 		this->sensor_range = sensor_range;
 	}
 	else std::cout<<"sensor range must be greater than hold range \n";
+	if (width > 0){
+		this->width = width;
+	}
+	else std::cout<<"width of robot footprint must be greater than zero \n";
 	if (hold_distance > min_hold || hold_distance < max_hold){
 		this->hold_distance = hold_distance;
 	}
@@ -23,7 +27,7 @@ WallFollow::WallFollow (std::string direction, double hold_distance, double sens
 	}
 	else {
 		std::cout<<"invalid direction in constructor. Use 'left' or 'right' \n";
-		std::cout<<"WallFollow(direction, hold distance,sensor_range, safety distance, max lin vel, max rotational vel, laser scans pointer, publisher) \n";
+		std::cout<<"WallFollow(direction, hold distance, width, sensor_range, max lin vel, max rotational vel, laser scans pointer, publisher) \n";
 	}
 	if(v_max > 0) this->v_max = v_max;
 	else {
@@ -33,10 +37,9 @@ WallFollow::WallFollow (std::string direction, double hold_distance, double sens
 	if(rot_v_max > 0) this->rot_v_max = rot_v_max;
 	else {
 		std::cout<<"maximum rotational velocity in constructor must be greater than zero, default of one set \n";
-		std::cout<<"WallFollow(direction, hold distance,sensor_range, safety distance, max lin vel, max rotational vel, laser scans pointer, publisher) \n";
+		std::cout<<"WallFollow(direction, hold distance, width, sensor_range, max lin vel, max rotational vel, laser scans pointer, publisher) \n";
 		this->v_max = 1;
 	}
-	this->abs_stop = abs_stop;
 	this->pscans = pscans;
 	this->publisher = publisher;
 	
@@ -100,6 +103,7 @@ void WallFollow::align(){
 	}
 	
 	if(vel.linear.x > v_max) vel.linear.x = v_max;
+	emergencyStop();
 	publisher->publish(vel);
 	
 }
@@ -201,9 +205,10 @@ void WallFollow::start(){
 			}
 		}
 		//safe for local minima
-		if(range [3] <= abs_stop ) vel.linear.x = 0;
+		if(range [3] <= hold_distance ) vel.linear.x = 0;
 		
 		zeroRange();
+		emergencyStop();
 		publisher->publish(vel);
 	}
 }
@@ -219,15 +224,37 @@ void WallFollow::getScans(sensor_msgs::LaserScan* scans, double del_theta){
 			range[ii] = range[ii] / (del_theta/scans->angle_increment);
 			if (range[ii] > max_range) {range[ii] = max_range;} 
 			if (range[ii] < 0 ) {range[ii] = 0;} 
-		}		
+		}
+		
+		double scan_theta_[] = {atan(width/(2*hold_distance)), -del_theta/2, -atan(width/(2*hold_distance)) -del_theta};
+		for(int i =0; i < 3; i++){
+			int ini = sqrt(pow((scan_theta_[i] - scans->angle_min), 2))/ scans->angle_increment;
+			for(int ii = 0; ii < del_theta/scans->angle_increment; ii++){
+				stop_scan[i] += scans->ranges[ini + ii];
+			}
+			stop_scan[i] = stop_scan[i] /  (del_theta/scans->angle_increment);
+			if (stop_scan[i] > max_range) {stop_scan[i] = max_range;} 
+			if (stop_scan[i] < 0 ) {stop_scan[i] = 0;} 
+		}
 	}
 	else {
 		std::cout<<"laser data is less than 180 degrees \n";
 	}
 }
 
+void WallFollow::emergencyStop(){
+	for(int i =0; i < 3; i++){
+		if(stop_scan[i] < hold_distance  ){
+			vel.linear.x = 0.1 * v_max;
+		}
+		if(stop_scan[i] < 0.3 * hold_distance  ){
+			vel.linear.x = 0;
+		}
+	}	
+}
+
 void WallFollow::zeroRange(){
-	for (int i = 0; i < sizeof(range)/sizeof(*range); i++){	
-				range[i] = 0;
-			}
+	for(int i = 0; i < sizeof(range)/sizeof(*range); i++){	
+		range[i] = 0;
+	}
 }
