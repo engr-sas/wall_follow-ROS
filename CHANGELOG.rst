@@ -2,8 +2,8 @@
 Changelog for package wall_follow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.1 (2018-11-30)
+------------------
 * usage example
 * emerency stop
 * v0.1
