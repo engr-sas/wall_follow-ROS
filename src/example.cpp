@@ -1,14 +1,7 @@
-# wall_follow-ROS
-use laser data from a mobile robot base to move parallel to an obstacle by sending velocity commands.  
-Params will require tunning based on robot and environment; rate, max vel
-
-Example Usage 
-
 #include <ros/ros.h>
 #include <sensor_msgs/LaserScan.h>
 #include <geometry_msgs/Twist.h>
 #include "/home/sas2/cws/src/wall_follow/src/wall_follow.cpp"
-
 
 sensor_msgs::LaserScan l_scans;
 sensor_msgs::LaserScan* pl_scans  = &l_scans;
@@ -36,4 +29,3 @@ int main(int argc, char** argv) {
 	}
 	return 0;
 }
-

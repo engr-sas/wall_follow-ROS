@@ -74,11 +74,11 @@ void WallFollow::align(){
 	if(scan_id == 3){//forward laser
 		getScans(pscans, del_theta);
 		vel.linear.x = ((range[3] - hold_distance)/ hold_distance) * v_max;
-		if(hold_distance - range[3] > -margin && hold_distance - range[3] < margin){
+		if(hold_distance - range[3] > -margin && hold_distance - range[3] < margin){ //move straight and find obstacle
 			align_rotate = true;
 			vel.linear.x = 0;
 		}
-		if(align_rotate){
+		if(align_rotate){ //rotate till aligned with side (after proximity is achieved)
 			if(direction == "left"){
 				if(hold_distance - range[0] > -margin && hold_distance - range[0] < margin){
 					aligned = true;
@@ -95,8 +95,11 @@ void WallFollow::align(){
 					vel.angular.z =  rot_v_max * (range[6] - hold_distance) / max_range;
 				}
 			}
+		double rot_v_min = rot_v_max/10;
+		if(vel.angular.z < 0 && vel.angular.z > -rot_v_min) vel.angular.z = -rot_v_min;
+		if(vel.angular.z > 0 && vel.angular.z < rot_v_min) vel.angular.z = rot_v_min;
 		}		
-	}else{//rotate till forward is closest
+	}else{//rotate till forward laser is closest
 		
 		vel.angular.z =  -rot_v_max * (range[6] - hold_distance) / max_range; 
 		align_active = false;
@@ -126,7 +129,6 @@ void WallFollow::start(){
 	}
 	else{
 		float z_turn;
-		float linear_dist;
 		float stopping_dist = 2; //TODO cal from dynamics based on max vel 
 		float max_speed_dist = hold_distance; //apply max speed beyond this range, min dist req to stop from max speed
 		float stopping_theta = 1; //TODO cal from dynamics based on max rit vel
@@ -136,16 +138,11 @@ void WallFollow::start(){
 		if(direction == "left"){
 			z_turn = 8 * (hold_range[0] -range[0])/10 + (hold_range[1] -range[1]) /10 + (hold_range[2] -range[2]) /10; //weight 8 1 1
 			
-			if (sqrt(pow((hold_range[0] -range[0]), 2)) < z_margin){
+			if (sqrt(pow((hold_range[0] -range[0]), 2)) < z_margin){//go straight
 				vel.angular.z = 0;
 			}
 			else{
-				if(z_turn < 0){
-					vel.angular.z = rot_v_max * (1 - ((stopping_theta + z_turn) / stopping_theta));
-				}
-				else{
-					vel.angular.z = -rot_v_max * (1 - ((stopping_theta - z_turn) / stopping_theta));						
-				}
+				vel.angular.z = -rot_v_max * z_turn / max_range;
 			}
 		}
 	
@@ -153,25 +150,34 @@ void WallFollow::start(){
 			z_turn = 8 * (hold_range[6] -range[6])/10 + (hold_range[5] -range[5]) /10 + (hold_range[4] -range[4]) /10; //weight 8 1 1
 			//std::cout<<" z_turn :"<<z_turn<<" \n";
 			
-			if (sqrt(pow((hold_range[6] -range[6]), 2)) < z_margin){
+			if (sqrt(pow((hold_range[6] -range[6]), 2)) < z_margin){ //go straight
 				vel.angular.z = 0;
 			}
 			else{
-				if(z_turn < 0){
-					vel.angular.z = -rot_v_max * (1 - ((stopping_theta + z_turn) / stopping_theta));
-				}
-				else{
-					vel.angular.z = rot_v_max * (1 - ((stopping_theta - z_turn) / stopping_theta));						
-				}
+				vel.angular.z = rot_v_max * z_turn / max_range;
 			}
 			
 		}
-	
 		if(vel.angular.z > rot_v_max) vel.angular.z = rot_v_max;
 		if(vel.angular.z < -rot_v_max) vel.angular.z = -rot_v_max;
+
 		
-		linear_dist = (range[3] - max_speed_dist);
-		if(range[3] < max_speed_dist * 1.5){//influence dist
+		//incase of seprated multiple obstacles
+		bool gap;
+		if(direction == "left"){
+			if( range[0] == max_range || range[1] == max_range || range[2] == max_range){
+				gap = true;
+			}
+			else gap =false;
+		}
+		else{
+			if( range[4] == max_range || range[5] == max_range || range[6] == max_range){
+				gap = true;
+			}
+			else gap =false;
+		}
+		
+		if(range[3] < max_speed_dist * 1.5 && !gap){//influence dist
 			if(range[3] <= max_speed_dist){
 				vel.linear.x = 0; //P TODO PID
 				if(direction == "left"){
@@ -251,6 +257,7 @@ void WallFollow::emergencyStop(){
 			vel.linear.x = 0;
 		}
 	}	
+	publisher->publish(vel);
 }
 
 void WallFollow::zeroRange(){
