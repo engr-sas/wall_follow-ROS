@@ -78,6 +78,10 @@ void WallFollow::align(){
 			align_rotate = true;
 			vel.linear.x = 0;
 		}
+		else{
+			align_rotate = false;
+			vel.linear.x = v_max * (range[3] - hold_distance);
+		}
 		if(align_rotate){ //rotate till aligned with side (after proximity is achieved)
 			if(direction == "left"){
 				if(hold_distance - range[0] > -margin && hold_distance - range[0] < margin){
@@ -100,12 +104,13 @@ void WallFollow::align(){
 		if(vel.angular.z > 0 && vel.angular.z < rot_v_min) vel.angular.z = rot_v_min;
 		}		
 	}else{//rotate till forward laser is closest
-		
-		vel.angular.z =  -rot_v_max * (range[6] - hold_distance) / max_range; 
+		vel.linear.x = 0 ;
+		vel.angular.z =  -rot_v_max/3; 
 		align_active = false;
 	}
 	
-	if(vel.linear.x > v_max) vel.linear.x = v_max;
+	if(vel.linear.x > v_max && vel.linear.x > 0) vel.linear.x = v_max;
+	if(vel.linear.x < -v_max && vel.linear.x < 0) vel.linear.x = -v_max;
 	emergencyStop();
 	publisher->publish(vel);
 	
@@ -114,6 +119,7 @@ void WallFollow::align(){
 void WallFollow::start(){
 	checkAlignment();
 	if(!aligned){
+		std::cout<<"trying to align \n"; 
 		if(!align_active){
 			scan_id = 0;
 			double closest_point = max_range;
