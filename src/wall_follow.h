@@ -17,19 +17,16 @@ class WallFollow{
 	void align();
 	void emergencyStop();
 	void checkAlignment();
+	void printTry();
+	void printAligned();
 	
 	private:
-	bool aligned;
-	bool align_rotate;
-	bool align_active;
+	bool aligned, align_rotate, align_active;
+	bool print_try, print_aligned;
 	int scan_id;
-	double max_range;
-	double sensor_range;
+	double max_range, sensor_range, closest_point;
 	static const float pi = 22/7;
-	double error_ratio;
-	double del_theta;
-	double width;
-	double hold_distance;
+	double error_ratio, hold_distance, del_theta, width;
 	std::string direction; 
 	sensor_msgs::LaserScan* pscans;
 	float range[7];

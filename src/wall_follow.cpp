@@ -52,6 +52,9 @@ WallFollow::WallFollow (std::string direction, double hold_distance, double sens
 	hold_range[6] = hold_distance;
 	error_ratio = 5;
 	max_range = sensor_range *1.2;
+	print_try = false;
+	print_aligned = false;
+	closest_point = max_range;
 }
 
 void WallFollow::checkAlignment(){
@@ -119,10 +122,9 @@ void WallFollow::align(){
 void WallFollow::start(){
 	checkAlignment();
 	if(!aligned){
-		std::cout<<"trying to align \n"; 
+		printTry(); 
 		if(!align_active){
 			scan_id = 0;
-			double closest_point = max_range;
 			for(int i = 0; i < sizeof(range)/sizeof(*range); i++){
 				if (range[i] < closest_point) {
 					closest_point = range[i];
@@ -134,6 +136,7 @@ void WallFollow::start(){
 		align();
 	}
 	else{
+		printAligned();
 		float z_turn;
 		float stopping_dist = 2; //TODO cal from dynamics based on max vel 
 		float max_speed_dist = hold_distance; //apply max speed beyond this range, min dist req to stop from max speed
@@ -271,3 +274,12 @@ void WallFollow::zeroRange(){
 		range[i] = 0;
 	}
 }
+
+void WallFollow::printTry(){
+	if (!print_try) ROS_INFO("Trying to align \n"); 
+	print_try = true;
+};
+void WallFollow::printAligned(){
+	if (!print_aligned) ROS_INFO("Aligned, following wall \n");
+	print_aligned = true;
+};
